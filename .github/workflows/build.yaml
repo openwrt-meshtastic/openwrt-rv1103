@@ -1,0 +1,38 @@
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout kernel
+        uses: actions/checkout@v6
+        with:
+          repository: OnionIoT/linux-stable
+          ref: openwrt-6.6.93
+          path: linux-stable
+      
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          path: openwrt-rv1103
+      
+      - name: Build OpenWrt
+        working-directory: openwrt-rv1103
+        run: |
+          cp omega4_defconfig .config
+          # Configure external kernel tree path
+          sed -i 's|CONFIG_EXTERNAL_KERNEL_TREE=""|CONFIG_EXTERNAL_KERNEL_TREE="${{ github.workspace }}/linux-stable"|' .config
+          # Update feeds and install packages
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          # Build OpenWrt with the specified configuration
+          make defconfig
+          make
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: openwrt-build
+          path: openwrt-rv1103/bin/targets/
